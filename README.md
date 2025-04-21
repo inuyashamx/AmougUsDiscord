@@ -2,7 +2,7 @@
 
 ## Descripción General
 
-Este bot implementa un juego de "Impostor" (similar a Among Us) en Discord. El juego consiste en un grupo de tripulantes que deben completar tareas en una nave espacial mientras intentan descubrir quién es el impostor entre ellos. El impostor, por su parte, debe eliminar a los tripulantes sin ser descubierto.
+Este bot implementa un juego de "Impostor" en Discord. El juego consiste en un grupo de tripulantes que deben completar tareas en una nave espacial mientras intentan descubrir quién es el impostor entre ellos. El impostor, por su parte, debe eliminar a los tripulantes sin ser descubierto.
 
 ## Flujo del Juego
 
