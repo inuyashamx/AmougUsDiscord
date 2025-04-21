@@ -61,9 +61,12 @@ ${ejectedRole === 'impostor' ? '✅ ¡Era el impostor!' : '❌ No era el imposto
     }
 };
 
+// Referencia al módulo reportar para acceder a sus variables
+const reportar = require('./reportar');
+
 module.exports = {
     name: 'votar',
-    description: 'Vota para expulsar a un jugador',
+    description: 'Vota por un jugador durante una discusión',
     async execute(message, args) {
         try {
             // Verificaciones básicas
@@ -79,54 +82,53 @@ module.exports = {
                 return message.reply('❌ Los jugadores muertos no pueden votar.');
             }
 
-            if (!votingActive) {
+            if (!reportar.votingActive) {
                 return message.reply('❌ No hay ninguna votación en curso.');
             }
 
-            if (hasVoted.has(message.author.id)) {
-                return message.reply('❌ Ya has votado. Los votos son finales.');
+            // Verificar si el jugador ya votó
+            if (reportar.currentVotes.has(message.author.id)) {
+                return message.reply('❌ Ya has votado. Los votos son finales y no se pueden cambiar.');
             }
 
-            // Procesar el voto
-            let targetId;
+            // Manejar el voto "skip"
             if (args[0]?.toLowerCase() === 'skip') {
-                targetId = 'skip';
-            } else {
-                // Obtener el ID del jugador mencionado
-                const mention = message.mentions.users.first();
-                if (!mention) {
-                    return message.reply('❌ Debes mencionar a un jugador o usar "skip".');
-                }
-                if (!gameState.players.includes(mention.id)) {
-                    return message.reply('❌ Ese jugador no está en el juego.');
-                }
-                if (getPlayerRole(mention.id) === 'muerto') {
-                    return message.reply('❌ No puedes votar por un jugador muerto.');
-                }
-                targetId = mention.id;
+                reportar.currentVotes.set(message.author.id, 'skip');
+                return message.reply('✅ Has votado por saltarte la votación.');
+            }
+
+            // Obtener el jugador mencionado
+            const mentions = message.mentions.users;
+            if (mentions.size === 0) {
+                return message.reply('❌ Debes mencionar a un jugador (@jugador) o usar "skip".');
+            }
+
+            const votedPlayer = mentions.first();
+
+            // Verificar si el jugador votado está en el juego
+            if (!gameState.players.includes(votedPlayer.id)) {
+                return message.reply('❌ El jugador votado no está en el juego.');
+            }
+
+            // Verificar si el jugador votado está muerto
+            if (getPlayerRole(votedPlayer.id) === 'muerto') {
+                return message.reply('❌ No puedes votar por un jugador muerto.');
+            }
+
+            // No permitir votar por uno mismo
+            if (votedPlayer.id === message.author.id) {
+                return message.reply('❌ No puedes votarte a ti mismo.');
             }
 
             // Registrar el voto
-            votes.set(targetId, (votes.get(targetId) || 0) + 1);
-            hasVoted.add(message.author.id);
-
+            reportar.currentVotes.set(message.author.id, votedPlayer.id);
+            
             // Confirmar el voto
-            if (targetId === 'skip') {
-                message.reply('✅ Has votado por saltar la votación.');
-            } else {
-                message.reply(`✅ Has votado por ${message.guild.members.cache.get(targetId)}.`);
-            }
-
-            // Si todos han votado, contar votos inmediatamente
-            const livingPlayers = gameState.players.filter(id => getPlayerRole(id) !== 'muerto').length;
-            if (hasVoted.size >= livingPlayers) {
-                countVotes(message);
-                resetVoting();
-            }
+            return message.reply(`✅ Has votado por ${votedPlayer.username}.`);
 
         } catch (error) {
             console.error('Error al votar:', error);
             return message.reply('❌ Hubo un error al procesar tu voto.');
         }
-    },
+    }
 }; 

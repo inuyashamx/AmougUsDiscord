@@ -41,6 +41,24 @@ module.exports = {
             const timeLeft = COOLDOWN_TIME - (Date.now() - lastKill);
             if (timeLeft > 0) {
                 const secondsLeft = Math.ceil(timeLeft / 1000);
+
+                // Obtener jugadores en la misma sala para mostrar el intento fallido
+                const killerLocation = getPlayerLocation(message.author.id);
+                const playersInRoom = gameState.players.filter(playerId => 
+                    getPlayerLocation(playerId) === killerLocation && 
+                    getPlayerRole(playerId) !== 'muerto'
+                );
+
+                // Enviar mensaje de intento fallido a todos en la sala
+                for (const playerId of playersInRoom) {
+                    try {
+                        const player = await message.client.users.fetch(playerId);
+                        await player.send(`🔪 ¡Has presenciado un intento de asesinato fallido en ${killerLocation}! El arma aún está en enfriamiento.`);
+                    } catch (error) {
+                        console.error(`Error al notificar al jugador ${playerId}:`, error);
+                    }
+                }
+
                 return message.reply(`❌ Debes esperar ${secondsLeft} segundos antes de poder matar de nuevo.`);
             }
 
@@ -69,11 +87,13 @@ module.exports = {
             // Enviar mensajes
             const victim = await message.client.users.fetch(victimId);
             await victim.send('💀 Has sido eliminado. No puedes comunicarte con los demás jugadores.');
-            return message.reply('🔪 Eliminación exitosa.');
+
+            // Notificar al impostor del tiempo de enfriamiento
+            return message.reply(`🔪 Eliminación exitosa. Podrás matar de nuevo en ${COOLDOWN_TIME/1000} segundos.`);
 
         } catch (error) {
             console.error('Error al ejecutar el comando matar:', error);
             return message.reply('❌ Hubo un error al intentar eliminar al jugador.');
         }
-    },
+    }
 }; 

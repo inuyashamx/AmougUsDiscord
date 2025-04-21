@@ -6,12 +6,19 @@ const {
     reportBody
 } = require('../gameState');
 
-// Duración de la discusión en milisegundos
+// Duración de la discusión y votación en milisegundos
 const DISCUSSION_TIME = 60000; // 60 segundos
-let votingActive = false;
-let reportCooldown = new Map();
+const VOTING_TIME = 30000; // 30 segundos
+const REPORT_COOLDOWN = 30000; // 30 segundos de cooldown
 
-module.exports = {
+// Sistema de votación
+let votingActive = false;
+let currentVotes = new Map();
+let reportCooldown = new Map();
+let votingTimeout = null;
+let discussionTimeout = null;
+
+const command = {
     name: 'reportar',
     description: 'Reporta un cuerpo o inicia una discusión de emergencia',
     async execute(message) {
@@ -25,7 +32,8 @@ module.exports = {
                 return message.reply('❌ No estás en el juego.');
             }
 
-            if (getPlayerRole(message.author.id) === 'muerto') {
+            const playerRole = getPlayerRole(message.author.id);
+            if (playerRole === 'muerto') {
                 return message.reply('❌ Los jugadores muertos no pueden reportar.');
             }
 
@@ -35,7 +43,7 @@ module.exports = {
 
             // Verificar cooldown
             const lastReport = reportCooldown.get(message.author.id) || 0;
-            const timeLeft = 30000 - (Date.now() - lastReport); // 30 segundos de cooldown
+            const timeLeft = REPORT_COOLDOWN - (Date.now() - lastReport);
             if (timeLeft > 0) {
                 return message.reply(`❌ Debes esperar ${Math.ceil(timeLeft/1000)} segundos antes de reportar de nuevo.`);
             }
@@ -53,15 +61,21 @@ module.exports = {
 
             // Iniciar discusión
             votingActive = true;
+            currentVotes.clear();
             
             // Obtener nombres de las víctimas
             const victimNames = await Promise.all(bodies.map(async body => {
-                const user = await message.client.users.fetch(body.playerId);
-                return user.username;
+                try {
+                    const user = await message.client.users.fetch(body.playerId);
+                    return user.username;
+                } catch (error) {
+                    console.error('Error al obtener nombre de víctima:', error);
+                    return 'Jugador Desconocido';
+                }
             }));
             
             // Mensaje inicial
-            await message.channel.send(`
+            const initialMessage = await message.channel.send(`
 🚨 **¡CUERPO REPORTADO!** 🚨
 ${message.author} ha encontrado ${bodies.length === 1 ? 'el cuerpo de' : 'los cuerpos de'} ${victimNames.join(', ')} en ${location}
 
@@ -75,8 +89,12 @@ También pueden usar !votar skip para saltarse la votación
             // Actualizar cooldown
             reportCooldown.set(message.author.id, Date.now());
 
+            // Limpiar timeouts anteriores si existen
+            if (discussionTimeout) clearTimeout(discussionTimeout);
+            if (votingTimeout) clearTimeout(votingTimeout);
+
             // Temporizador para la discusión
-            setTimeout(async () => {
+            discussionTimeout = setTimeout(async () => {
                 if (votingActive) {
                     await message.channel.send(`
 ⚠️ **¡TIEMPO DE DISCUSIÓN TERMINADO!** ⚠️
@@ -89,17 +107,68 @@ Los votos son finales y no se pueden cambiar.
                     `);
 
                     // Temporizador para la votación
-                    setTimeout(async () => {
-                        votingActive = false;
-                        await message.channel.send('🗳️ ¡La votación ha terminado! Nadie fue expulsado.');
-                    }, 30000); // 30 segundos para votar
+                    votingTimeout = setTimeout(async () => {
+                        if (votingActive) {
+                            // Contar votos
+                            const voteCount = new Map();
+                            let skipVotes = 0;
+
+                            for (const [voter, votedFor] of currentVotes) {
+                                if (votedFor === 'skip') {
+                                    skipVotes++;
+                                } else {
+                                    voteCount.set(votedFor, (voteCount.get(votedFor) || 0) + 1);
+                                }
+                            }
+
+                            // Determinar resultado
+                            let maxVotes = 0;
+                            let ejectedPlayer = null;
+
+                            for (const [player, votes] of voteCount) {
+                                if (votes > maxVotes) {
+                                    maxVotes = votes;
+                                    ejectedPlayer = player;
+                                }
+                            }
+
+                            // Mensaje final
+                            let resultMessage = '🗳️ **Resultados de la votación:**\n';
+                            if (skipVotes > maxVotes) {
+                                resultMessage += 'La mayoría decidió saltarse la votación. Nadie fue expulsado.';
+                            } else if (ejectedPlayer) {
+                                const ejectedUser = await message.client.users.fetch(ejectedPlayer);
+                                gameState.roles[ejectedPlayer] = 'muerto';
+                                resultMessage += `${ejectedUser.username} fue expulsado de la nave.\n`;
+                                resultMessage += gameState.roles[ejectedPlayer] === 'impostor' ? 
+                                    '🎯 ¡Era el impostor!' : 
+                                    '😱 ¡No era el impostor!';
+                            } else {
+                                resultMessage += 'No hubo suficientes votos. Nadie fue expulsado.';
+                            }
+
+                            await message.channel.send(resultMessage);
+                            votingActive = false;
+                            currentVotes.clear();
+                        }
+                    }, VOTING_TIME);
                 }
             }, DISCUSSION_TIME);
 
         } catch (error) {
             console.error('Error al reportar:', error);
             votingActive = false;
+            currentVotes.clear();
+            if (discussionTimeout) clearTimeout(discussionTimeout);
+            if (votingTimeout) clearTimeout(votingTimeout);
             return message.reply('❌ Hubo un error al procesar el reporte.');
         }
-    },
+    }
+};
+
+// Exportar el comando y las variables necesarias para el sistema de votación
+module.exports = {
+    ...command,
+    votingActive,
+    currentVotes
 }; 
