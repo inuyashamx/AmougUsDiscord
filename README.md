@@ -17,6 +17,16 @@ Este bot implementa un juego de "Impostor" (similar a Among Us) en Discord. El j
    - El impostor es descubierto y expulsado
    - Se agota el tiempo
 
+## Condiciones de Victoria
+
+1. **Victoria de los Tripulantes**:
+   - Completar todas las tareas (alcanzar 500 puntos)
+   - Descubrir y expulsar al impostor
+
+2. **Victoria del Impostor**:
+   - Eliminar a suficientes tripulantes
+   - Evitar que los tripulantes completen todas las tareas antes de que se agote el tiempo
+
 ## Estructura del Sistema
 
 El sistema está compuesto por los siguientes componentes principales:
@@ -24,6 +34,17 @@ El sistema está compuesto por los siguientes componentes principales:
 1. **Archivo Principal (index.js)**: Maneja la inicialización del bot, la carga de comandos y el procesamiento de mensajes.
 2. **Estado del Juego (gameState.js)**: Mantiene y gestiona todo el estado del juego, incluyendo jugadores, roles, ubicaciones, tareas, etc.
 3. **Comandos (directorio commands/)**: Contiene todos los comandos disponibles para los jugadores.
+
+## Sistema de Temporizadores
+
+El juego utiliza varios temporizadores:
+
+1. **Temporizador del Juego**: 10 minutos para completar las tareas
+2. **Temporizador de Tareas**: Entre 30 y 60 segundos para completar cada tarea
+3. **Temporizador de Enfriamiento para Matar**: 30 segundos entre asesinatos
+4. **Temporizador de Discusión**: 60 segundos para discutir después de reportar un cuerpo
+5. **Temporizador de Votación**: 30 segundos para votar después de la discusión
+6. **Temporizador de Enfriamiento para Reportar**: 30 segundos entre reportes
 
 ## Gestión del Estado del Juego
 
@@ -228,27 +249,6 @@ El juego tiene 5 salas diferentes:
    - Descripción: Sistemas de soporte vital
    - Tareas: Limpiar filtros de O2, Ajustar niveles
    - Puntos por tarea: 25
-
-## Sistema de Temporizadores
-
-El juego utiliza varios temporizadores:
-
-1. **Temporizador del Juego**: 10 minutos para completar las tareas
-2. **Temporizador de Tareas**: Entre 30 y 60 segundos para completar cada tarea
-3. **Temporizador de Enfriamiento para Matar**: 30 segundos entre asesinatos
-4. **Temporizador de Discusión**: 60 segundos para discutir después de reportar un cuerpo
-5. **Temporizador de Votación**: 30 segundos para votar después de la discusión
-6. **Temporizador de Enfriamiento para Reportar**: 30 segundos entre reportes
-
-## Condiciones de Victoria
-
-1. **Victoria de los Tripulantes**:
-   - Completar todas las tareas (alcanzar 500 puntos)
-   - Descubrir y expulsar al impostor
-
-2. **Victoria del Impostor**:
-   - Eliminar a suficientes tripulantes
-   - Evitar que los tripulantes completen todas las tareas antes de que se agote el tiempo
 
 ## Consideraciones Técnicas
 
