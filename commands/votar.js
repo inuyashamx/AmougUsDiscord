@@ -4,63 +4,6 @@ const {
     endGame
 } = require('../gameState');
 
-// Sistema de votación
-let votes = new Map();
-let hasVoted = new Set();
-let votingActive = false;
-
-const resetVoting = () => {
-    votes.clear();
-    hasVoted.clear();
-    votingActive = false;
-};
-
-const countVotes = (message) => {
-    let voteCount = new Map();
-    voteCount.set('skip', 0);
-
-    // Contar votos
-    for (const [targetId, count] of votes) {
-        voteCount.set(targetId, count);
-    }
-
-    // Encontrar el más votado
-    let maxVotes = 0;
-    let ejected = 'skip';
-    let tie = false;
-
-    for (const [targetId, count] of voteCount) {
-        if (count > maxVotes) {
-            maxVotes = count;
-            ejected = targetId;
-            tie = false;
-        } else if (count === maxVotes) {
-            tie = true;
-        }
-    }
-
-    // Si hay empate o la mayoría votó skip, nadie es expulsado
-    if (tie || ejected === 'skip') {
-        message.channel.send('🗳️ No se llegó a un consenso. Nadie fue expulsado.');
-        return;
-    }
-
-    // Expulsar al jugador
-    const ejectedRole = getPlayerRole(ejected);
-    gameState.roles[ejected] = 'muerto';
-
-    message.channel.send(`
-🗳️ Los jugadores han votado...
-👉 ${message.guild.members.cache.get(ejected)} ha sido expulsado.
-${ejectedRole === 'impostor' ? '✅ ¡Era el impostor!' : '❌ No era el impostor...'}
-    `);
-
-    // Si expulsaron al impostor, terminar el juego
-    if (ejectedRole === 'impostor') {
-        endGame('impostor_caught');
-    }
-};
-
 // Referencia al módulo reportar para acceder a sus variables
 const reportar = require('./reportar');
 
@@ -94,7 +37,16 @@ module.exports = {
             // Manejar el voto "skip"
             if (args[0]?.toLowerCase() === 'skip') {
                 reportar.currentVotes.set(message.author.id, 'skip');
-                return message.reply('✅ Has votado por saltarte la votación.');
+                
+                // Mostrar estado de la votación
+                const totalVotes = reportar.currentVotes.size;
+                const alivePlayers = gameState.players.filter(id => getPlayerRole(id) !== 'muerto').length;
+                const remainingVoters = alivePlayers - totalVotes;
+
+                let voteMessage = '✅ Has votado por saltarte la votación.\n\n';
+                voteMessage += await getVotingStatus(message.client, totalVotes, alivePlayers, remainingVoters);
+
+                return message.reply(voteMessage);
             }
 
             // Obtener el jugador mencionado
@@ -123,12 +75,63 @@ module.exports = {
             // Registrar el voto
             reportar.currentVotes.set(message.author.id, votedPlayer.id);
             
-            // Confirmar el voto
-            return message.reply(`✅ Has votado por ${votedPlayer.username}.`);
+            // Mostrar estado de la votación
+            const totalVotes = reportar.currentVotes.size;
+            const alivePlayers = gameState.players.filter(id => getPlayerRole(id) !== 'muerto').length;
+            const remainingVoters = alivePlayers - totalVotes;
+
+            let voteMessage = `✅ Has votado por ${votedPlayer.username}.\n\n`;
+            voteMessage += await getVotingStatus(message.client, totalVotes, alivePlayers, remainingVoters);
+
+            return message.reply(voteMessage);
 
         } catch (error) {
             console.error('Error al votar:', error);
             return message.reply('❌ Hubo un error al procesar tu voto.');
         }
     }
-}; 
+};
+
+// Función auxiliar para obtener el estado de la votación
+async function getVotingStatus(client, totalVotes, alivePlayers, remainingVoters) {
+    let status = `📊 Estado de la votación: ${totalVotes}/${alivePlayers} votos emitidos\n`;
+    
+    // Mostrar votos actuales
+    const voteCount = new Map();
+    let skipVotes = 0;
+
+    for (const [voterId, votedForId] of reportar.currentVotes) {
+        try {
+            if (votedForId === 'skip') {
+                skipVotes++;
+            } else {
+                voteCount.set(votedForId, (voteCount.get(votedForId) || 0) + 1);
+            }
+        } catch (error) {
+            console.error('Error al contar votos:', error);
+        }
+    }
+
+    // Mostrar resumen de votos
+    if (skipVotes > 0) {
+        status += `Skip: ${skipVotes} votos\n`;
+    }
+
+    for (const [playerId, votes] of voteCount) {
+        try {
+            const player = await client.users.fetch(playerId);
+            status += `${player.username}: ${votes} votos\n`;
+        } catch (error) {
+            console.error('Error al obtener nombre de jugador:', error);
+        }
+    }
+
+    // Mostrar jugadores restantes
+    if (remainingVoters > 0) {
+        status += `\n⏳ Faltan ${remainingVoters} jugadores por votar`;
+    } else {
+        status += `\n✨ ¡Todos los jugadores han votado!`;
+    }
+
+    return status;
+} 
