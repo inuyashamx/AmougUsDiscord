@@ -57,14 +57,16 @@ const addPlayer = (playerId) => {
         gameState.locations[playerId] = 'SalaA'; // Ubicación inicial
         // Inicializar tareas del jugador
         gameState.tasks[playerId] = [];
-        // Asignar 2 tareas aleatorias de cada sala
+        // Asignar todas las tareas de cada sala
         gameState.rooms.forEach(room => {
-            const task = {
-                room: room.id,
-                description: room.availableTasks[Math.floor(Math.random() * room.availableTasks.length)],
-                completed: false
-            };
-            gameState.tasks[playerId].push(task);
+            room.availableTasks.forEach(taskDescription => {
+                const task = {
+                    room: room.id,
+                    description: taskDescription,
+                    completed: false
+                };
+                gameState.tasks[playerId].push(task);
+            });
         });
         return true;
     }
