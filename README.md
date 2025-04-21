@@ -27,6 +27,35 @@ Este bot implementa un juego de "Impostor" en Discord. El juego consiste en un g
    - Eliminar a suficientes tripulantes
    - Evitar que los tripulantes completen todas las tareas antes de que se agote el tiempo
 
+## Salas del Juego
+
+El juego tiene 5 salas diferentes:
+
+1. **Sala de Administración (SalaA)**
+   - Descripción: Sala principal con controles de la nave
+   - Tareas: Descargar datos, Revisar registros
+   - Puntos por tarea: 25
+
+2. **Sala de Ingeniería (SalaB)**
+   - Descripción: Donde se reparan los sistemas de la nave
+   - Tareas: Calibrar motores, Reparar cableado
+   - Puntos por tarea: 30
+
+3. **Sala de Comunicaciones (SalaC)**
+   - Descripción: Centro de comunicaciones y datos
+   - Tareas: Establecer comunicación, Limpiar filtros
+   - Puntos por tarea: 20
+
+4. **Sala de Seguridad (SalaD)**
+   - Descripción: Monitoreo de cámaras y sistemas de seguridad
+   - Tareas: Revisar cámaras, Actualizar sistema
+   - Puntos por tarea: 25
+
+5. **Sala de Oxígeno (SalaE)**
+   - Descripción: Sistemas de soporte vital
+   - Tareas: Limpiar filtros de O2, Ajustar niveles
+   - Puntos por tarea: 25
+
 ## Estructura del Sistema
 
 El sistema está compuesto por los siguientes componentes principales:
@@ -220,35 +249,6 @@ Cada comando de tarea sigue una lógica similar:
 - **Lógica**:
   1. Muestra un mensaje de confirmación
 - **Restricciones**: Ninguna
-
-## Salas del Juego
-
-El juego tiene 5 salas diferentes:
-
-1. **Sala de Administración (SalaA)**
-   - Descripción: Sala principal con controles de la nave
-   - Tareas: Descargar datos, Revisar registros
-   - Puntos por tarea: 25
-
-2. **Sala de Ingeniería (SalaB)**
-   - Descripción: Donde se reparan los sistemas de la nave
-   - Tareas: Calibrar motores, Reparar cableado
-   - Puntos por tarea: 30
-
-3. **Sala de Comunicaciones (SalaC)**
-   - Descripción: Centro de comunicaciones y datos
-   - Tareas: Establecer comunicación, Limpiar filtros
-   - Puntos por tarea: 20
-
-4. **Sala de Seguridad (SalaD)**
-   - Descripción: Monitoreo de cámaras y sistemas de seguridad
-   - Tareas: Revisar cámaras, Actualizar sistema
-   - Puntos por tarea: 25
-
-5. **Sala de Oxígeno (SalaE)**
-   - Descripción: Sistemas de soporte vital
-   - Tareas: Limpiar filtros de O2, Ajustar niveles
-   - Puntos por tarea: 25
 
 ## Consideraciones Técnicas
 
