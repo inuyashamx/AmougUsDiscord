@@ -11,12 +11,11 @@ module.exports = {
 
             // Reiniciar el estado del juego
             resetGame();
-            gameState.isActive = true;
 
             // Agregar al creador del juego automáticamente
             addPlayer(message.author.id);
 
-            return message.reply(`¡Juego creado! ${message.author.username} se ha unido al juego. Usa !unirse para unirte. (Máximo 1 jugador para pruebas)`);
+            return message.reply(`¡Juego creado! ${message.author.username} se ha unido al juego. Usa !unirse para unirte. (Máximo ${gameState.maxPlayers} jugadores)\n\nUsa !iniciar cuando todos estén listos para comenzar.`);
         } catch (error) {
             console.error('Error al crear el juego:', error);
             return message.reply('Hubo un error al crear el juego.');

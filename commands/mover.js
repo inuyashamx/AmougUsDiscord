@@ -66,7 +66,7 @@ module.exports = {
 
             // Agregar información de cadáveres
             if (bodies.length > 0) {
-                entryMessage += `\n💀 ¡Has encontrado ${bodies.length} ${bodies.length === 1 ? 'cadáver' : 'cadáveres'} en esta sala!`;
+                entryMessage += `\n💀 ¡Has encontrado ${bodies.length} ${bodies.length === 1 ? 'cadáver' : 'cadáveres'} en esta sala!\nUsa !reportar para iniciar una discusión.`;
             }
 
             // Obtener tareas pendientes en la sala
@@ -74,7 +74,9 @@ module.exports = {
             if (playerTasks.length > 0) {
                 entryMessage += '\n\n📋 Tareas pendientes en esta sala:';
                 playerTasks.forEach(task => {
-                    entryMessage += `\n- ${task.description}`;
+                    // Convertir el nombre de la tarea a formato de comando
+                    const commandName = task.description.toLowerCase().replace(/ /g, '_');
+                    entryMessage += `\n• ${task.description} (!${commandName})`;
                 });
             }
 
