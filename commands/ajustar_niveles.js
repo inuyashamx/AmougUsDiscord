@@ -1,23 +1,37 @@
-const { gameState, getPlayerLocation, getPlayerTasks, setPlayerBusy } = require('../gameState');
+const { 
+    gameState, 
+    getPlayerLocation, 
+    getPlayerTasks, 
+    setPlayerBusy,
+    completeTask,
+    getPlayerRole
+} = require('../gameState');
 
 module.exports = {
     name: 'ajustar_niveles',
-    async execute(message, args) {
+    description: 'Ajusta los niveles de oxígeno del sistema',
+    async execute(message) {
         try {
             // Verificar si hay un juego activo
             if (!gameState.isActive) {
-                return message.reply('No hay ningún juego activo.');
+                return message.reply('❌ No hay ningún juego activo.');
             }
 
             // Verificar si el jugador está en el juego
             if (!gameState.players.includes(message.author.id)) {
-                return message.reply('No estás en el juego.');
+                return message.reply('❌ No estás en el juego.');
+            }
+
+            // Verificar que no sea impostor
+            const playerRole = getPlayerRole(message.author.id);
+            if (playerRole === 'impostor') {
+                return message.reply('❌ Los impostores no pueden realizar tareas.');
             }
 
             // Verificar si el jugador está en la sala correcta
             const playerLocation = getPlayerLocation(message.author.id);
             if (playerLocation !== 'SalaE') {
-                return message.reply('Debes estar en la Sala de Oxígeno para realizar esta tarea.');
+                return message.reply('❌ Debes estar en la Sala de Oxígeno para realizar esta tarea.');
             }
 
             // Verificar si el jugador tiene esta tarea pendiente
@@ -29,59 +43,64 @@ module.exports = {
             );
 
             if (!task) {
-                return message.reply('No tienes pendiente la tarea de ajustar los niveles.');
+                return message.reply('❌ No tienes pendiente la tarea de ajustar niveles.');
             }
 
             // Marcar al jugador como ocupado
             setPlayerBusy(message.author.id, true);
 
             // Proceso de ajuste (simulado)
-            await message.reply('⚖️ Iniciando ajuste de niveles de O2...\n*No puedes moverte durante 10 segundos*\n▓░░░░░░░░░ 10%');
+            const msg = await message.reply('🔧 Iniciando ajuste de niveles...\n*No puedes moverte durante 10 segundos*\n▓░░░░░░░░░ 10%');
             
-            // Simular el proceso con mensajes de progreso
+            // Fase 1: 2.5 segundos
             setTimeout(async () => {
                 try {
-                    await message.reply('⚖️ Midiendo niveles actuales...\n▓▓▓░░░░░░░ 30%');
+                    await msg.edit('🔧 Calibrando sensores de O2...\n▓▓▓░░░░░░░ 30%');
+                    
+                    // Fase 2: 5 segundos
                     setTimeout(async () => {
                         try {
-                            await message.reply('⚖️ Calibrando sensores...\n▓▓▓▓▓░░░░░ 50%');
+                            await msg.edit('🔧 Ajustando niveles de presión...\n▓▓▓▓▓░░░░░ 50%');
+                            
+                            // Fase 3: 7.5 segundos
                             setTimeout(async () => {
                                 try {
-                                    await message.reply('⚖️ Ajustando concentración...\n▓▓▓▓▓▓▓░░░ 70%');
+                                    await msg.edit('🔧 Estabilizando sistema...\n▓▓▓▓▓▓▓░░░ 70%');
+                                    
+                                    // Fase 4: 10 segundos
                                     setTimeout(async () => {
                                         try {
-                                            // Marcar la tarea como completada
-                                            task.completed = true;
+                                            // Completar la tarea
+                                            completeTask(message.author.id, 'SalaE', 'Ajustar niveles');
                                             // Liberar al jugador
                                             setPlayerBusy(message.author.id, false);
                                             // Enviar mensaje de confirmación
-                                            await message.reply('✅ ¡Niveles ajustados correctamente!\n▓▓▓▓▓▓▓▓▓▓ 100%\nLos niveles de O2 están en rango óptimo.');
+                                            await msg.edit('✅ Niveles ajustados correctamente\n▓▓▓▓▓▓▓▓▓▓ 100%');
                                         } catch (error) {
                                             console.error('Error al completar la tarea:', error);
                                             setPlayerBusy(message.author.id, false);
                                         }
-                                    }, 2500); // Cuarta parte
+                                    }, 2500); // 10 segundos total
                                 } catch (error) {
-                                    console.error('Error durante el ajuste:', error);
+                                    console.error('Error durante la estabilización:', error);
                                     setPlayerBusy(message.author.id, false);
                                 }
-                            }, 2500); // Tercera parte
+                            }, 2500); // 7.5 segundos
                         } catch (error) {
-                            console.error('Error durante la calibración:', error);
+                            console.error('Error durante el ajuste:', error);
                             setPlayerBusy(message.author.id, false);
                         }
-                    }, 2500); // Segunda parte
+                    }, 2500); // 5 segundos
                 } catch (error) {
-                    console.error('Error durante la medición:', error);
+                    console.error('Error durante la calibración:', error);
                     setPlayerBusy(message.author.id, false);
                 }
-            }, 2500); // Primera parte
+            }, 2500); // 2.5 segundos
 
         } catch (error) {
             console.error('Error al ajustar niveles:', error);
-            // Asegurarse de liberar al jugador si hay un error
             setPlayerBusy(message.author.id, false);
-            return message.reply('Hubo un error al ajustar los niveles.');
+            return message.reply('❌ Hubo un error al ajustar los niveles.');
         }
     }
 }; 
