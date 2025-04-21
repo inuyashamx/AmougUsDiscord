@@ -2,7 +2,8 @@
 const gameState = {
     isActive: false,
     players: [],
-    maxPlayers: 1, // Por ahora solo 1 jugador para pruebas
+    maxPlayers: 10, // Aumentado a 10 jugadores
+    minPlayers: 4, // Mínimo 4 jugadores para empezar
     roles: {}, // Almacenará los roles de los jugadores
     locations: {}, // Almacenará la ubicación de cada jugador
     tasks: {}, // Almacenará las tareas de cada jugador
@@ -76,6 +77,9 @@ const resetGame = () => {
 };
 
 const addPlayer = (playerId) => {
+    if (gameState.players.length >= gameState.maxPlayers) {
+        return false;
+    }
     if (!gameState.players.includes(playerId)) {
         gameState.players.push(playerId);
         gameState.locations[playerId] = 'SalaA'; // Ubicación inicial
@@ -295,6 +299,11 @@ const getUnreportedBodies = (roomId) => {
     return gameState.bodies[roomId].filter(body => !body.reportedBy);
 };
 
+// Función para verificar si hay suficientes jugadores para empezar
+const hasEnoughPlayers = () => {
+    return gameState.players.length >= gameState.minPlayers;
+};
+
 module.exports = {
     gameState,
     resetGame,
@@ -317,5 +326,6 @@ module.exports = {
     endGame,
     addBody,
     reportBody,
-    getUnreportedBodies
+    getUnreportedBodies,
+    hasEnoughPlayers
 }; 

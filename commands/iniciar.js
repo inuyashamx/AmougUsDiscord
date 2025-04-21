@@ -12,15 +12,22 @@ module.exports = {
             return message.reply('❌ No hay jugadores unidos al juego.');
         }
 
+        // Verificar número mínimo de jugadores
+        if (gameState.players.length < 4) {
+            return message.reply('❌ Se necesitan al menos 4 jugadores para iniciar el juego.');
+        }
+
         gameState.isActive = true;
         setGameChannel(message.channel);
         
         // Mostrar información inicial
         const minutes = Math.floor(gameState.gameDuration / 60000);
         const pointsNeeded = gameState.requiredPoints;
+        const totalPlayers = gameState.players.length;
         message.channel.send(`
 🎮 ¡El juego ha comenzado!
 
+👥 Jugadores: ${totalPlayers}
 ⏱️ Tiempo límite: ${minutes} minutos
 🎯 Puntos necesarios: ${pointsNeeded}
 
