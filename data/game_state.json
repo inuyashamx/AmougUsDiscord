@@ -1,0 +1,10 @@
+{
+    "isActive": true,
+    "players": [
+        "228709857249722369"
+    ],
+    "maxPlayers": 1,
+    "roles": {
+        "228709857249722369": "tripulante"
+    }
+}
