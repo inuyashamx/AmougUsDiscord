@@ -4,6 +4,19 @@
 
 Este bot implementa un juego de "Impostor" (similar a Among Us) en Discord. El juego consiste en un grupo de tripulantes que deben completar tareas en una nave espacial mientras intentan descubrir quién es el impostor entre ellos. El impostor, por su parte, debe eliminar a los tripulantes sin ser descubierto.
 
+## Flujo del Juego
+
+1. **Creación del Juego**: Un jugador crea un juego con `!crear_juego`
+2. **Unirse al Juego**: Otros jugadores se unen con `!unirse`
+3. **Inicio del Juego**: El creador inicia el juego con `!iniciar`
+4. **Asignación de Roles**: Se asigna aleatoriamente un impostor y el resto son tripulantes
+5. **Jugabilidad**: Los jugadores realizan tareas, se mueven entre salas, etc.
+6. **Finalización**: El juego termina cuando:
+   - Los tripulantes completan todas las tareas (alcanzan los puntos requeridos)
+   - El impostor elimina a suficientes tripulantes
+   - El impostor es descubierto y expulsado
+   - Se agota el tiempo
+
 ## Estructura del Sistema
 
 El sistema está compuesto por los siguientes componentes principales:
@@ -31,18 +44,6 @@ El estado del juego se mantiene en el objeto `gameState` en el archivo `gameStat
 - **bodies**: Objeto que almacena los cadáveres reportados
 - **rooms**: Array con información de todas las salas disponibles
 
-## Flujo del Juego
-
-1. **Creación del Juego**: Un jugador crea un juego con `!crear_juego`
-2. **Unirse al Juego**: Otros jugadores se unen con `!unirse`
-3. **Inicio del Juego**: El creador inicia el juego con `!iniciar`
-4. **Asignación de Roles**: Se asigna aleatoriamente un impostor y el resto son tripulantes
-5. **Jugabilidad**: Los jugadores realizan tareas, se mueven entre salas, etc.
-6. **Finalización**: El juego termina cuando:
-   - Los tripulantes completan todas las tareas (alcanzan los puntos requeridos)
-   - El impostor elimina a suficientes tripulantes
-   - El impostor es descubierto y expulsado
-   - Se agota el tiempo
 
 ## Comandos Disponibles
 
