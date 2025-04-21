@@ -37,15 +37,21 @@ const isPlayerStillInGame = (playerId) => {
 
 // Función para limpiar votos de jugadores que se desconectaron o murieron
 const cleanupVotes = () => {
+    // Crear una copia del Map para iterar
+    const votesToCheck = new Map(currentVotes);
+    
     // Eliminar votos de jugadores que ya no están en el juego
-    for (const [voterId] of currentVotes) {
+    for (const [voterId] of votesToCheck) {
         if (!isPlayerStillInGame(voterId)) {
             currentVotes.delete(voterId);
         }
     }
-
+    
+    // Crear otra copia para el segundo bucle
+    const votesToCheck2 = new Map(currentVotes);
+    
     // Eliminar votos para jugadores que ya no están en el juego
-    for (const [voterId, votedForId] of currentVotes) {
+    for (const [voterId, votedForId] of votesToCheck2) {
         if (votedForId !== 'skip' && !isPlayerStillInGame(votedForId)) {
             currentVotes.delete(voterId);
         }
@@ -54,7 +60,7 @@ const cleanupVotes = () => {
 
 // Función para actualizar el mensaje de discusión
 const updateDiscussionMessage = async () => {
-    if (currentDiscussionMessage) {
+    if (currentDiscussionMessage && currentDiscussionMessage.editable) {
         try {
             const timeLeft = Math.ceil((discussionTimeout._idleStart + discussionTimeout._idleTimeout - Date.now()) / 1000);
             if (timeLeft > 0) {
@@ -69,7 +75,7 @@ const updateDiscussionMessage = async () => {
 
 // Función para actualizar el mensaje de votación
 const updateVotingMessage = async () => {
-    if (currentVotingMessage) {
+    if (currentVotingMessage && currentVotingMessage.editable) {
         try {
             const timeLeft = Math.ceil((votingTimeout._idleStart + votingTimeout._idleTimeout - Date.now()) / 1000);
             if (timeLeft > 0) {
@@ -112,6 +118,7 @@ async function getVotingSummary(client) {
             summary += `• ${user.username}: ${votes} votos\n`;
         } catch (error) {
             console.error('Error al obtener nombre de jugador:', error);
+            summary += `• Jugador desconocido (${playerId}): ${votes} votos\n`;
         }
     }
 
@@ -128,6 +135,7 @@ async function getVotingSummary(client) {
                 summary += `• ${user.username}\n`;
             } catch (error) {
                 console.error('Error al obtener nombre de jugador:', error);
+                summary += `• Jugador desconocido (${id})\n`;
             }
         }
     }
@@ -315,9 +323,15 @@ ${await getVotingSummary(message.client)}
                                         skipVotes++;
                                         votesMessage += `• ${voter.username} ➡️ skip\n`;
                                     } else {
-                                        const votedFor = await message.client.users.fetch(votedForId);
-                                        votesMessage += `• ${voter.username} ➡️ ${votedFor.username}\n`;
-                                        voteCount.set(votedForId, (voteCount.get(votedForId) || 0) + 1);
+                                        try {
+                                            const votedFor = await message.client.users.fetch(votedForId);
+                                            votesMessage += `• ${voter.username} ➡️ ${votedFor.username}\n`;
+                                            voteCount.set(votedForId, (voteCount.get(votedForId) || 0) + 1);
+                                        } catch (error) {
+                                            console.error('Error al obtener nombre del jugador votado:', error);
+                                            votesMessage += `• ${voter.username} ➡️ Jugador desconocido (${votedForId})\n`;
+                                            voteCount.set(votedForId, (voteCount.get(votedForId) || 0) + 1);
+                                        }
                                     }
                                 } catch (error) {
                                     console.error('Error al procesar voto:', error);
@@ -338,6 +352,7 @@ ${await getVotingSummary(message.client)}
                                         votesMessage += `• ${user.username}\n`;
                                     } catch (error) {
                                         console.error('Error al obtener no votante:', error);
+                                        votesMessage += `• Jugador desconocido (${id})\n`;
                                     }
                                 }
                             }
@@ -353,14 +368,15 @@ ${await getVotingSummary(message.client)}
                                     maxVotes = votes;
                                     ejectedPlayers = [player];
                                     tie = false;
-                                } else if (votes === maxVotes) {
-                                    if (votes === skipVotes) {
-                                        tie = true;
-                                    } else {
-                                        ejectedPlayers.push(player);
-                                        tie = true;
-                                    }
+                                } else if (votes === maxVotes && votes > skipVotes) {
+                                    ejectedPlayers.push(player);
+                                    tie = true;
                                 }
+                            }
+                            
+                            // Si el máximo es igual a skipVotes, es un empate con skip
+                            if (maxVotes === skipVotes && ejectedPlayers.length === 0) {
+                                tie = true;
                             }
 
                             // Mensaje final con el resultado
@@ -387,6 +403,10 @@ ${await getVotingSummary(message.client)}
                                 // Terminar el juego si el impostor fue expulsado
                                 if (wasImpostor) {
                                     await message.channel.send(votesMessage);
+                                    // Limpiar variables antes de terminar el juego
+                                    votingActive = false;
+                                    currentVotes.clear();
+                                    cleanupTimeouts();
                                     endGame('impostor_caught');
                                     return;
                                 }
@@ -452,7 +472,13 @@ async function getPlayerLocations(client) {
     // Construir el mensaje de ubicaciones
     for (const [location, info] of locationGroups) {
         const room = getRoomById(location);
-        let roomInfo = `${room.name} (${location}):\n`;
+        let roomInfo = '';
+        
+        if (room) {
+            roomInfo = `${room.name} (${location}):\n`;
+        } else {
+            roomInfo = `Sala desconocida (${location}):\n`;
+        }
 
         // Agregar jugadores vivos
         if (info.players.length > 0) {

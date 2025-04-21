@@ -60,45 +60,123 @@ const activeTimers = new Map();
 
 // Funciones para manipular el estado
 const resetGame = () => {
-    if (gameState.gameTimer) {
-        clearTimeout(gameState.gameTimer);
+    try {
+        console.log('\n=== Reiniciando Estado del Juego ===');
+        console.log('Estado anterior:', {
+            activo: gameState.isActive,
+            jugadores: gameState.players.length,
+            roles: Object.keys(gameState.roles).length
+        });
+        
+        // Limpiar temporizador del juego
+        if (gameState.gameTimer) {
+            clearTimeout(gameState.gameTimer);
+            gameState.gameTimer = null;
+        }
+        
+        // Limpiar todos los temporizadores activos
+        activeTimers.forEach(timer => clearTimeout(timer));
+        activeTimers.clear();
+        
+        // Hacer copia de seguridad de las salas y configuración
+        const roomsBackup = [...gameState.rooms];
+        const maxPlayersBackup = gameState.maxPlayers;
+        const minPlayersBackup = gameState.minPlayers;
+        const requiredPointsBackup = gameState.requiredPoints;
+        const gameDurationBackup = gameState.gameDuration;
+        
+        // Reiniciar todas las propiedades del estado
+        gameState.isActive = false;
+        gameState.players = [];
+        gameState.roles = {};
+        gameState.locations = {};
+        gameState.tasks = {};
+        gameState.busyPlayers = {};
+        gameState.totalPoints = 0;
+        gameState.bodies = {};
+        
+        // Restaurar configuración
+        gameState.rooms = roomsBackup;
+        gameState.maxPlayers = maxPlayersBackup;
+        gameState.minPlayers = minPlayersBackup;
+        gameState.requiredPoints = requiredPointsBackup;
+        gameState.gameDuration = gameDurationBackup;
+        
+        // Limpiar el canal del juego
+        gameChannel = null;
+        
+        console.log('Estado nuevo:', {
+            activo: gameState.isActive,
+            jugadores: gameState.players.length,
+            roles: Object.keys(gameState.roles).length,
+            maxJugadores: gameState.maxPlayers,
+            minJugadores: gameState.minPlayers
+        });
+        console.log('=== Reinicio Completado ===\n');
+        
+        return true;
+    } catch (error) {
+        console.error('Error al reiniciar el juego:', error);
+        return false;
     }
-    gameState.isActive = false;
-    gameState.players = [];
-    gameState.roles = {};
-    gameState.locations = {};
-    gameState.tasks = {};
-    gameState.busyPlayers = {};
-    gameState.totalPoints = 0;
-    gameState.gameTimer = null;
-    gameState.bodies = {}; // Limpiar cadáveres
-    clearAllTimers();
-    gameChannel = null;
 };
 
 const addPlayer = (playerId) => {
-    if (gameState.players.length >= gameState.maxPlayers) {
-        return false;
-    }
-    if (!gameState.players.includes(playerId)) {
+    try {
+        console.log('\n=== Agregando Jugador ===');
+        console.log('Estado actual:', {
+            activo: gameState.isActive,
+            jugadoresActuales: gameState.players.length,
+            maxJugadores: gameState.maxPlayers
+        });
+
+        // Validar que el juego esté activo
+        if (!gameState.isActive) {
+            console.log('Error: El juego no está activo');
+            return false;
+        }
+
+        // Validar que haya espacio
+        if (gameState.players.length >= gameState.maxPlayers) {
+            console.log('Error: Juego lleno');
+            return false;
+        }
+
+        // Validar que el jugador no esté ya en el juego
+        if (gameState.players.includes(playerId)) {
+            console.log('Error: Jugador ya está en el juego');
+            return false;
+        }
+
+        // Agregar al jugador
         gameState.players.push(playerId);
         gameState.locations[playerId] = 'SalaA'; // Ubicación inicial
+
         // Inicializar tareas del jugador
         gameState.tasks[playerId] = [];
-        // Asignar todas las tareas de cada sala
         gameState.rooms.forEach(room => {
             room.availableTasks.forEach(taskDescription => {
-                const task = {
+                gameState.tasks[playerId].push({
                     room: room.id,
                     description: taskDescription,
                     completed: false
-                };
-                gameState.tasks[playerId].push(task);
+                });
             });
         });
+
+        console.log('Jugador agregado exitosamente:', {
+            id: playerId,
+            ubicacion: gameState.locations[playerId],
+            cantidadTareas: gameState.tasks[playerId].length,
+            jugadoresActuales: gameState.players.length
+        });
+        console.log('=== Fin Agregar Jugador ===\n');
+
         return true;
+    } catch (error) {
+        console.error('Error al agregar jugador:', error);
+        return false;
     }
-    return false;
 };
 
 const setPlayerRole = (playerId, role) => {
