@@ -1,97 +1,88 @@
-const { gameState, getRoomById, getPlayerLocation, setPlayerLocation, getRoomTasks, isPlayerBusy } = require('../gameState');
+const { 
+    gameState,
+    getPlayerLocation,
+    setPlayerLocation,
+    getRoomById,
+    getRoomTasks,
+    getPlayerRole,
+    getUnreportedBodies
+} = require('../gameState');
 
 module.exports = {
     name: 'mover',
+    description: 'Muévete a otra sala',
     async execute(message, args) {
         try {
-            // Verificar si hay un juego activo
+            // Verificaciones básicas
             if (!gameState.isActive) {
-                return message.reply('No hay ningún juego activo. Usa !crear_juego para crear uno.');
+                return message.reply('❌ No hay ningún juego activo.');
             }
 
-            // Verificar si el jugador está en el juego
             if (!gameState.players.includes(message.author.id)) {
-                return message.reply('No estás en el juego. Usa !unirse para unirte.');
+                return message.reply('❌ No estás en el juego.');
             }
 
-            // Verificar si el jugador está ocupado
-            if (isPlayerBusy(message.author.id)) {
-                return message.reply('No puedes moverte mientras estás realizando una tarea. Espera a terminarla.');
+            if (getPlayerRole(message.author.id) === 'muerto') {
+                return message.reply('❌ Los jugadores muertos no pueden moverse.');
             }
 
-            // Verificar si se proporcionó una sala
             if (!args[0]) {
-                return message.reply('Debes especificar una sala. Usa !salas para ver las salas disponibles.');
+                return message.reply('❌ Debes especificar una sala (ejemplo: !mover SalaA)');
             }
 
             const targetRoom = args[0];
             const room = getRoomById(targetRoom);
 
-            // Verificar si la sala existe
             if (!room) {
-                return message.reply(`La sala "${targetRoom}" no existe. Usa !salas para ver las salas disponibles.`);
+                return message.reply('❌ Sala no válida. Usa !salas para ver las salas disponibles.');
             }
 
-            // Obtener la ubicación actual del jugador
-            const currentLocation = getPlayerLocation(message.author.id);
-
-            // Verificar si el jugador ya está en esa sala
-            if (currentLocation === targetRoom) {
-                return message.reply(`Ya estás en la ${room.name}.`);
+            // Intentar mover al jugador
+            if (!setPlayerLocation(message.author.id, targetRoom)) {
+                return message.reply('❌ No puedes moverte mientras estás ocupado.');
             }
 
-            // Encontrar jugadores en la sala destino antes de mover al jugador
-            const playersInTargetRoom = gameState.players.filter(playerId => 
-                gameState.locations[playerId] === targetRoom && playerId !== message.author.id
+            // Obtener jugadores en la sala
+            const playersInRoom = gameState.players.filter(playerId => 
+                getPlayerLocation(playerId) === targetRoom &&
+                playerId !== message.author.id &&
+                getPlayerRole(playerId) !== 'muerto'
             );
 
-            // Cambiar la ubicación del jugador
-            const moved = setPlayerLocation(message.author.id, targetRoom);
-            if (!moved) {
-                return message.reply('No puedes moverte mientras estás realizando una tarea.');
-            }
+            // Obtener cadáveres en la sala
+            const bodies = getUnreportedBodies(targetRoom);
 
-            // Notificar a los jugadores que están en la sala que alguien entró
-            if (playersInTargetRoom.length > 0) {
-                const enteringPlayer = await message.client.users.fetch(message.author.id);
-                for (const playerId of playersInTargetRoom) {
-                    try {
-                        const playerInRoom = await message.client.users.fetch(playerId);
-                        await playerInRoom.send(`🚪 ${enteringPlayer.username} ha entrado a la ${room.name}.`);
-                    } catch (error) {
-                        console.error(`Error al notificar al jugador ${playerId}:`, error);
-                    }
-                }
-            }
+            // Construir mensaje de entrada
+            let entryMessage = `🚪 Has entrado a ${room.name}`;
 
-            // Construir el mensaje de presencia para el jugador que entra
-            let presenceMsg = '';
-            if (playersInTargetRoom.length === 0) {
-                presenceMsg = 'No hay nadie más en esta sala.';
-            } else {
-                const playerNames = await Promise.all(playersInTargetRoom.map(async playerId => {
-                    const user = await message.client.users.fetch(playerId);
+            // Agregar información de jugadores presentes
+            if (playersInRoom.length > 0) {
+                const playerNames = await Promise.all(playersInRoom.map(async id => {
+                    const user = await message.client.users.fetch(id);
                     return user.username;
                 }));
-                presenceMsg = `También está${playersInTargetRoom.length === 1 ? '' : 'n'} aquí: ${playerNames.join(', ')}`;
+                entryMessage += `\n👥 Jugadores presentes: ${playerNames.join(', ')}`;
             }
 
-            // Verificar si hay tareas disponibles en la sala
-            const roomTasks = getRoomTasks(message.author.id, targetRoom);
-            let taskMsg = '';
-            if (roomTasks.length > 0) {
-                const taskCommands = roomTasks.map(task => {
-                    // Convertir la descripción de la tarea a un formato válido para comando
-                    const taskCommand = task.description.toLowerCase().replace(/ /g, '_');
-                    return `📋 Tienes 1 tarea pendiente aquí: ${task.description}\nUsa !${taskCommand} para realizarla`;
+            // Agregar información de cadáveres
+            if (bodies.length > 0) {
+                entryMessage += `\n💀 ¡Has encontrado ${bodies.length} ${bodies.length === 1 ? 'cadáver' : 'cadáveres'} en esta sala!`;
+            }
+
+            // Obtener tareas pendientes en la sala
+            const playerTasks = getRoomTasks(message.author.id, targetRoom);
+            if (playerTasks.length > 0) {
+                entryMessage += '\n\n📋 Tareas pendientes en esta sala:';
+                playerTasks.forEach(task => {
+                    entryMessage += `\n- ${task.description}`;
                 });
-                taskMsg = '\n' + taskCommands.join('\n');
             }
 
-            return message.reply(`Te has movido a la ${room.name}.\n${presenceMsg}${taskMsg}`);
+            return message.reply(entryMessage);
+
         } catch (error) {
-            console.error('Error al mover al jugador:', error);
-            return message.reply('Hubo un error al moverte a la sala.');
+            console.error('Error al mover:', error);
+            return message.reply('❌ Hubo un error al intentar moverte.');
         }
-    }
+    },
 }; 

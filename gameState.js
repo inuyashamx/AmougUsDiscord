@@ -11,6 +11,7 @@ const gameState = {
     totalPoints: 0,
     requiredPoints: 200, // Ajustado para 10 minutos incluyendo discusiones
     gameDuration: 600000, // 10 minutos en milisegundos
+    bodies: {}, // Almacena los cadáveres: {roomId: [{playerId, reportedBy}]}
     rooms: [
         { 
             id: 'SalaA', 
@@ -69,6 +70,7 @@ const resetGame = () => {
     gameState.busyPlayers = {};
     gameState.totalPoints = 0;
     gameState.gameTimer = null;
+    gameState.bodies = {}; // Limpiar cadáveres
     clearAllTimers();
     gameChannel = null;
 };
@@ -264,6 +266,35 @@ const completeTask = (playerId, roomId, taskDescription) => {
     return false;
 };
 
+// Función para agregar un cadáver
+const addBody = (playerId, roomId) => {
+    if (!gameState.bodies[roomId]) {
+        gameState.bodies[roomId] = [];
+    }
+    gameState.bodies[roomId].push({
+        playerId,
+        reportedBy: null
+    });
+};
+
+// Función para marcar un cadáver como reportado
+const reportBody = (roomId, reporterId) => {
+    if (gameState.bodies[roomId]) {
+        const unreportedBody = gameState.bodies[roomId].find(body => !body.reportedBy);
+        if (unreportedBody) {
+            unreportedBody.reportedBy = reporterId;
+            return true;
+        }
+    }
+    return false;
+};
+
+// Función para obtener cadáveres no reportados en una sala
+const getUnreportedBodies = (roomId) => {
+    if (!gameState.bodies[roomId]) return [];
+    return gameState.bodies[roomId].filter(body => !body.reportedBy);
+};
+
 module.exports = {
     gameState,
     resetGame,
@@ -283,5 +314,8 @@ module.exports = {
     setGameChannel,
     clearAllTimers,
     startGameTimer,
-    endGame
+    endGame,
+    addBody,
+    reportBody,
+    getUnreportedBodies
 }; 

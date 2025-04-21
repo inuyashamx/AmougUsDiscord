@@ -2,7 +2,8 @@ const {
     gameState,
     getPlayerLocation,
     getPlayerRole,
-    isPlayerBusy
+    isPlayerBusy,
+    addBody
 } = require('../gameState');
 
 // Tiempo de enfriamiento entre asesinatos (en milisegundos)
@@ -58,8 +59,9 @@ module.exports = {
             // Seleccionar un jugador aleatorio de la sala
             const victimId = playersInRoom[Math.floor(Math.random() * playersInRoom.length)];
             
-            // Marcar al jugador como muerto
+            // Marcar al jugador como muerto y dejar el cadáver
             gameState.roles[victimId] = 'muerto';
+            addBody(victimId, killerLocation);
             
             // Actualizar tiempo de enfriamiento
             cooldowns.set(message.author.id, Date.now());
