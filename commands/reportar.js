@@ -20,6 +20,8 @@ let votingTimeout = null;
 let discussionTimeout = null;
 let updateInterval = null;
 let voteUpdateInterval = null;
+let currentDiscussionMessage = null;
+let currentVotingMessage = null;
 
 const cleanupTimeouts = () => {
     if (discussionTimeout) clearTimeout(discussionTimeout);
@@ -49,6 +51,89 @@ const cleanupVotes = () => {
         }
     }
 };
+
+// Función para actualizar el mensaje de discusión
+const updateDiscussionMessage = async () => {
+    if (currentDiscussionMessage) {
+        try {
+            const timeLeft = Math.ceil((discussionTimeout._idleStart + discussionTimeout._idleTimeout - Date.now()) / 1000);
+            if (timeLeft > 0) {
+                const content = currentDiscussionMessage.content.replace(/⌛ Tiempo restante: \d+s/, `⌛ Tiempo restante: ${timeLeft}s`);
+                await currentDiscussionMessage.edit(content);
+            }
+        } catch (error) {
+            console.error('Error al actualizar mensaje de discusión:', error);
+        }
+    }
+};
+
+// Función para actualizar el mensaje de votación
+const updateVotingMessage = async () => {
+    if (currentVotingMessage) {
+        try {
+            const timeLeft = Math.ceil((votingTimeout._idleStart + votingTimeout._idleTimeout - Date.now()) / 1000);
+            if (timeLeft > 0) {
+                const content = currentVotingMessage.content.replace(/⌛ Tiempo restante: \d+s/, `⌛ Tiempo restante: ${timeLeft}s`);
+                await currentVotingMessage.edit(content);
+            }
+        } catch (error) {
+            console.error('Error al actualizar mensaje de votación:', error);
+        }
+    }
+};
+
+// Función para obtener un resumen de la votación
+async function getVotingSummary(client) {
+    let summary = '';
+    const voteCount = new Map();
+    let skipVotes = 0;
+    const alivePlayers = gameState.players.filter(id => getPlayerRole(id) !== 'muerto').length;
+    
+    // Contar votos
+    for (const [voterId, votedForId] of currentVotes) {
+        if (votedForId === 'skip') {
+            skipVotes++;
+        } else {
+            voteCount.set(votedForId, (voteCount.get(votedForId) || 0) + 1);
+        }
+    }
+
+    // Mostrar estado actual
+    summary += `📊 Votos actuales (${currentVotes.size}/${alivePlayers}):\n`;
+    
+    if (skipVotes > 0) {
+        summary += `• Skip: ${skipVotes} votos\n`;
+    }
+
+    // Mostrar votos por jugador
+    for (const [playerId, votes] of voteCount) {
+        try {
+            const user = await client.users.fetch(playerId);
+            summary += `• ${user.username}: ${votes} votos\n`;
+        } catch (error) {
+            console.error('Error al obtener nombre de jugador:', error);
+        }
+    }
+
+    // Mostrar jugadores que no han votado
+    const nonVoters = gameState.players.filter(id => 
+        getPlayerRole(id) !== 'muerto' && !currentVotes.has(id)
+    );
+
+    if (nonVoters.length > 0) {
+        summary += '\n💤 Faltan por votar:\n';
+        for (const id of nonVoters) {
+            try {
+                const user = await client.users.fetch(id);
+                summary += `• ${user.username}\n`;
+            } catch (error) {
+                console.error('Error al obtener nombre de jugador:', error);
+            }
+        }
+    }
+
+    return summary;
+}
 
 const command = {
     name: 'reportar',
@@ -121,37 +206,41 @@ const command = {
                         .map(async id => {
                             try {
                                 const user = await message.client.users.fetch(id);
-                                return user.username;
+                                return { id, username: user.username };
                             } catch (error) {
                                 console.error('Error al obtener nombre de jugador:', error);
-                                return 'Jugador Desconocido';
+                                return { id, username: 'Jugador Desconocido' };
                             }
                         })
                 )
             ]);
 
             // Mensaje inicial de discusión
-            const initialMessage = await message.channel.send(`
+            currentDiscussionMessage = await message.channel.send(`
 🚨 **¡CUERPO REPORTADO!** 🚨
 ${message.author} ha encontrado ${bodies.length === 1 ? 'el cuerpo de' : 'los cuerpos de'} ${victimNames.join(', ')} en ${location}
 
-👥 Jugadores vivos (${alivePlayers}):
-${alivePlayersList.map(name => `• ${name}`).join('\n')}
+📍 Estado de las salas cuando se reportó:
+${await getPlayerLocations(message.client)}
+
+👥 Jugadores vivos (${alivePlayersList.length}):
+${alivePlayersList.map(player => `• ${player.username}`).join('\n')}
 
 ⏰ Fase de discusión
 ⌛ Tiempo restante: 60s
 
 💭 Discutan quién podría ser el impostor...
+
+❗ Información importante:
+• Usen este tiempo para compartir información
+• Observen la ubicación de cada jugador
+• Consideren quién estaba cerca de la escena
+• Recuerden que el impostor puede mentir
+• Los cuerpos reportados ya no serán visibles
 `);
 
             // Actualizar contador de discusión
-            let discussionTimeLeft = 60;
-            updateInterval = setInterval(async () => {
-                discussionTimeLeft -= 10;
-                if (discussionTimeLeft > 0) {
-                    await initialMessage.edit(initialMessage.content.replace(/⌛ Tiempo restante: \d+s/, `⌛ Tiempo restante: ${discussionTimeLeft}s`));
-                }
-            }, 10000);
+            updateInterval = setInterval(updateDiscussionMessage, 1000);
 
             // Actualizar cooldown
             reportCooldown.set(message.author.id, Date.now());
@@ -161,12 +250,12 @@ ${alivePlayersList.map(name => `• ${name}`).join('\n')}
                 if (updateInterval) clearInterval(updateInterval);
                 
                 if (votingActive) {
-                    const votingMessage = await message.channel.send(`
+                    // Mensaje de votación
+                    currentVotingMessage = await message.channel.send(`
 ⚠️ **¡COMIENZA LA VOTACIÓN!** ⚠️
 Tienen 30 segundos para decidir:
 
-👥 Jugadores que pueden votar:
-${alivePlayersList.map(name => `• ${name}`).join('\n')}
+${await getVotingSummary(message.client)}
 
 📝 Comandos disponibles:
 • !votar @jugador - Para votar por un jugador
@@ -175,17 +264,35 @@ ${alivePlayersList.map(name => `• ${name}`).join('\n')}
 ⏰ Fase de votación
 ⌛ Tiempo restante: 30s
 
-⚠️ Los votos son finales y no se pueden cambiar
+❗ Recuerden:
+• Los votos son finales y no se pueden cambiar
+• No votar cuenta como "skip"
+• La mayoría decide
+• En caso de empate, nadie es expulsado
+• El impostor también debe votar para no levantar sospechas
 `);
 
-                    // Actualizar contador de votación
-                    let votingTimeLeft = 30;
+                    // Actualizar contador de votación y resumen
                     voteUpdateInterval = setInterval(async () => {
-                        votingTimeLeft -= 10;
-                        if (votingTimeLeft > 0) {
-                            await votingMessage.edit(votingMessage.content.replace(/⌛ Tiempo restante: \d+s/, `⌛ Tiempo restante: ${votingTimeLeft}s`));
+                        try {
+                            const timeLeft = Math.ceil((votingTimeout._idleStart + votingTimeout._idleTimeout - Date.now()) / 1000);
+                            if (timeLeft > 0) {
+                                const content = `
+⚠️ **¡VOTACIÓN EN CURSO!** ⚠️
+Tiempo restante: ${timeLeft}s
+
+${await getVotingSummary(message.client)}
+
+📝 Comandos disponibles:
+• !votar @jugador - Para votar por un jugador
+• !votar skip - Para saltarse la votación
+`;
+                                await currentVotingMessage.edit(content);
+                            }
+                        } catch (error) {
+                            console.error('Error al actualizar mensaje de votación:', error);
                         }
-                    }, 10000);
+                    }, 5000); // Actualizar cada 5 segundos
 
                     // Temporizador para la votación
                     votingTimeout = setTimeout(async () => {
@@ -315,4 +422,61 @@ module.exports = {
     set votingActive(value) {
         votingActive = value;
     }
-}; 
+};
+
+// Función auxiliar para obtener las ubicaciones de los jugadores
+async function getPlayerLocations(client) {
+    let locationInfo = '';
+    const locationGroups = new Map();
+
+    // Agrupar jugadores por ubicación
+    for (const playerId of gameState.players) {
+        const role = getPlayerRole(playerId);
+        if (role !== 'muerto') {
+            const location = getPlayerLocation(playerId);
+            if (!locationGroups.has(location)) {
+                locationGroups.set(location, { players: [], bodies: [] });
+            }
+            locationGroups.get(location).players.push(playerId);
+        }
+    }
+
+    // Agregar información de cadáveres
+    for (const [location, bodies] of Object.entries(gameState.bodies)) {
+        if (!locationGroups.has(location)) {
+            locationGroups.set(location, { players: [], bodies: [] });
+        }
+        locationGroups.get(location).bodies = bodies.filter(body => !body.reportedBy);
+    }
+
+    // Construir el mensaje de ubicaciones
+    for (const [location, info] of locationGroups) {
+        const room = getRoomById(location);
+        let roomInfo = `${room.name} (${location}):\n`;
+
+        // Agregar jugadores vivos
+        if (info.players.length > 0) {
+            const playerNames = await Promise.all(
+                info.players.map(async id => {
+                    try {
+                        const user = await client.users.fetch(id);
+                        return user.username;
+                    } catch (error) {
+                        console.error('Error al obtener nombre de jugador:', error);
+                        return 'Jugador Desconocido';
+                    }
+                })
+            );
+            roomInfo += `👥 Jugadores: ${playerNames.join(', ')}\n`;
+        }
+
+        // Agregar cadáveres no reportados
+        if (info.bodies.length > 0) {
+            roomInfo += `💀 Cadáveres: ${info.bodies.length}\n`;
+        }
+
+        locationInfo += roomInfo + '\n';
+    }
+
+    return locationInfo || 'No hay información de ubicación disponible';
+} 
