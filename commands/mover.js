@@ -42,7 +42,7 @@ module.exports = {
                 return message.reply('❌ No puedes moverte mientras estás ocupado.');
             }
 
-            // Obtener jugadores en la sala
+            // Obtener jugadores en la sala (excluyendo al jugador actual y muertos)
             const playersInRoom = gameState.players.filter(playerId => 
                 getPlayerLocation(playerId) === targetRoom &&
                 playerId !== message.author.id &&
@@ -61,23 +61,31 @@ module.exports = {
                     const user = await message.client.users.fetch(id);
                     return user.username;
                 }));
-                entryMessage += `\n👥 Jugadores presentes: ${playerNames.join(', ')}`;
+                entryMessage += `\n\n👥 En esta sala:`;
+                entryMessage += `\n• Tú`;
+                playerNames.forEach(name => {
+                    entryMessage += `\n• ${name}`;
+                });
+            } else {
+                entryMessage += '\n\n👤 Estás solo en esta sala';
             }
 
             // Agregar información de cadáveres
             if (bodies.length > 0) {
-                entryMessage += `\n💀 ¡Has encontrado ${bodies.length} ${bodies.length === 1 ? 'cadáver' : 'cadáveres'} en esta sala!\nUsa !reportar para iniciar una discusión.`;
+                entryMessage += `\n\n💀 ¡Has encontrado ${bodies.length} ${bodies.length === 1 ? 'cadáver' : 'cadáveres'} en esta sala!\nUsa !reportar para iniciar una discusión.`;
             }
 
-            // Obtener tareas pendientes en la sala
-            const playerTasks = getRoomTasks(message.author.id, targetRoom);
-            if (playerTasks.length > 0) {
-                entryMessage += '\n\n📋 Tareas pendientes en esta sala:';
-                playerTasks.forEach(task => {
-                    // Convertir el nombre de la tarea a formato de comando
-                    const commandName = task.description.toLowerCase().replace(/ /g, '_');
-                    entryMessage += `\n• ${task.description} (!${commandName})`;
-                });
+            // Solo mostrar tareas si es tripulante
+            const playerRole = getPlayerRole(message.author.id);
+            if (playerRole === 'tripulante') {
+                const playerTasks = getRoomTasks(message.author.id, targetRoom);
+                if (playerTasks.length > 0) {
+                    entryMessage += '\n\n📋 Tareas pendientes en esta sala:';
+                    playerTasks.forEach(task => {
+                        const commandName = task.description.toLowerCase().replace(/ /g, '_');
+                        entryMessage += `\n• ${task.description} (!${commandName})`;
+                    });
+                }
             }
 
             return message.reply(entryMessage);

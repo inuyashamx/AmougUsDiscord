@@ -1,4 +1,4 @@
-const { gameState, getPlayerLocation, getPlayerTasks, setPlayerBusy } = require('../gameState');
+const { gameState, getPlayerLocation, getPlayerTasks, setPlayerBusy, completeTask } = require('../gameState');
 
 module.exports = {
     name: 'establecer_comunicacion',
@@ -36,26 +36,26 @@ module.exports = {
             setPlayerBusy(message.author.id, true);
 
             // Proceso de establecer comunicación (simulado)
-            await message.reply('📡 Iniciando establecimiento de comunicación...\n*No puedes moverte durante 10 segundos*\n▓░░░░░░░░░ 10%');
+            const msg = await message.reply('📡 Iniciando establecimiento de comunicación...\n*No puedes moverte durante 10 segundos*\n▓░░░░░░░░░ 10%');
             
             // Simular el proceso con mensajes de progreso
             setTimeout(async () => {
                 try {
-                    await message.reply('📡 Buscando señal...\n▓▓▓░░░░░░░ 30%');
+                    await msg.edit('📡 Buscando señal...\n▓▓▓░░░░░░░ 30%');
                     setTimeout(async () => {
                         try {
-                            await message.reply('📡 Estableciendo conexión...\n▓▓▓▓▓░░░░░ 50%');
+                            await msg.edit('📡 Estableciendo conexión...\n▓▓▓▓▓░░░░░ 50%');
                             setTimeout(async () => {
                                 try {
-                                    await message.reply('📡 Sincronizando canales...\n▓▓▓▓▓▓▓░░░ 70%');
+                                    await msg.edit('📡 Sincronizando canales...\n▓▓▓▓▓▓▓░░░ 70%');
                                     setTimeout(async () => {
                                         try {
-                                            // Marcar la tarea como completada
-                                            task.completed = true;
+                                            // Completar la tarea usando la función completeTask
+                                            completeTask(message.author.id, 'SalaC', 'Establecer comunicación');
                                             // Liberar al jugador
                                             setPlayerBusy(message.author.id, false);
                                             // Enviar mensaje de confirmación
-                                            await message.reply('✅ ¡Comunicación establecida!\n▓▓▓▓▓▓▓▓▓▓ 100%\nTodos los canales están sincronizados y funcionando.');
+                                            await msg.edit('✅ ¡Comunicación establecida!\n▓▓▓▓▓▓▓▓▓▓ 100%\nTodos los canales están sincronizados y funcionando.');
                                         } catch (error) {
                                             console.error('Error al completar la tarea:', error);
                                             setPlayerBusy(message.author.id, false);

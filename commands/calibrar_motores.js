@@ -1,4 +1,4 @@
-const { gameState, getPlayerLocation, getPlayerTasks, setPlayerBusy, completeTask } = require('../gameState');
+const { gameState, getPlayerLocation, getPlayerTasks, setPlayerBusy, completeTask, getPlayerRole } = require('../gameState');
 
 module.exports = {
     name: 'calibrar_motores',
@@ -12,6 +12,12 @@ module.exports = {
             // Verificar si el jugador está en el juego
             if (!gameState.players.includes(message.author.id)) {
                 return message.reply('No estás en el juego.');
+            }
+
+            // Verificar que no sea impostor
+            const playerRole = getPlayerRole(message.author.id);
+            if (playerRole === 'impostor') {
+                return message.reply('❌ Los impostores no pueden realizar tareas.');
             }
 
             // Verificar si el jugador está en la sala correcta

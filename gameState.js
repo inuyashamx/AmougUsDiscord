@@ -10,7 +10,7 @@ const gameState = {
     busyPlayers: {}, // Almacenará los jugadores que están realizando tareas
     gameTimer: null,
     totalPoints: 0,
-    requiredPoints: 200, // Ajustado para 10 minutos incluyendo discusiones
+    requiredPoints: 500, // Puntos necesarios para ganar
     gameDuration: 600000, // 10 minutos en milisegundos
     bodies: {}, // Almacena los cadáveres: {roomId: [{playerId, reportedBy}]}
     rooms: [
