@@ -1,4 +1,4 @@
-# Bot de Juego "Impostor" para Discord
+# Bot de Juego "Impostor" (AmongUs) para Discord
 
 ## Descripción General
 
