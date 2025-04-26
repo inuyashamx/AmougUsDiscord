@@ -91,6 +91,19 @@ module.exports = {
                 }
             });
 
+            // Agregar un collector para interacciones no autorizadas
+            const unauthorizedCollector = response.createMessageComponentCollector({
+                filter: i => i.user.id !== message.author.id,
+                time: 60000
+            });
+
+            unauthorizedCollector.on('collect', async i => {
+                await i.reply({
+                    content: '❌ No puedes interactuar con este menú porque alguien más lo está usando.',
+                    ephemeral: true
+                });
+            });
+
             collector.on('end', collected => {
                 if (collected.size === 0) {
                     response.edit({
