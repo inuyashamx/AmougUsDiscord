@@ -5,17 +5,17 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
+const { getServerChannel } = require("../channelConfig");
 
 module.exports = {
   name: "crear_juego",
   async execute(message, args) {
     try {
       // Verificar que estamos en el canal correcto
-      if (message.channel.name !== "impostor") {
-        console.log("Error: Canal incorrecto");
-        return message.reply(
-          "❌ Este comando solo funciona en el canal #impostor"
-        );
+      const serverChannelId = getServerChannel(message.guild.id);
+      if (message.channel.id !== serverChannelId) {
+        const configuredChannel = message.guild.channels.cache.get(serverChannelId);
+        return message.reply(`❌ Los comandos solo funcionan en ${configuredChannel}.`);
       }
 
       console.log("\n=== Creando Nuevo Juego ===");
